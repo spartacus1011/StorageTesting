@@ -1,0 +1,31 @@
+﻿<Window x:Class="StorageTesting.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:StorageTesting"
+        xmlns:md="https://github.com/fantasticfiasco/mvvm-dialogs"
+        mc:Ignorable="d"
+        Title="MainWindow" Height="600" Width="1200"
+        md:DialogServiceViews.IsRegistered="True">
+
+    <Window.DataContext>
+        <local:MainWindowViewModel/>
+    </Window.DataContext>
+
+    <DockPanel>
+    <StackPanel DockPanel.Dock="Left">
+        <TextBlock Text="Worksheet Persistance thingy" FontSize="18" HorizontalAlignment="Center" VerticalAlignment="Center" ></TextBlock>
+        <StackPanel Orientation="Horizontal">
+            <Button Content="Clear" Command="{Binding ClearCommand}"></Button>
+            <Button Content="XML Save/Load" Command="{Binding XMLSaveLoadCommand}"></Button>
+            <Button Content="XML Save/Load Encrypt" Command="{Binding XMLSaveLoadEncryptCommand}"></Button>
+            <Button Content="SQLite Save/Load" Command="{Binding SQLiteSaveLoadCommand}"></Button>
+        </StackPanel>
+        <ListBox Name="ItemsToDoListBox" ItemsSource="{Binding ListViewItems}" Height="500"></ListBox>
+    </StackPanel>
+        
+    <DataGrid ItemsSource="{Binding WorksheetOutSolutions}" DockPanel.Dock="Right"></DataGrid>
+    </DockPanel>
+
+</Window>
