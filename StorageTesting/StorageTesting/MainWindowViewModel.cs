@@ -34,7 +34,7 @@ namespace StorageTesting
             worksheetIn.Elements.Add(new ElementWavelength2(){ElementName = "Cu", Wavelength = 329.543f, ElementId = 1});
             worksheetIn.Elements.Add(new ElementWavelength2(){ElementName = "Zn", Wavelength = 123.456f, ElementId = 2});
 
-            for (int i = 0; i < 1000; i++) //this looks very wierd and awkward
+            for (int i = 0; i < 10000; i++) //this looks very wierd and awkward
             {
                 worksheetIn.Solutions.Add(new Solution2()
                 {
@@ -63,7 +63,11 @@ namespace StorageTesting
         {
             //XML serialization----------------------------------------------------------------------------
             //By far the simplest and easiest method. But is it really the most feasible??
-            string xmlPath = "C:\\Users\\rforzisi\\Documents\\Test Projects\\StorageTesting\\XmlStorage.ICPWorksheet";
+            //string xmlPath = "C:\\Users\\rforzisi\\Documents\\Test Projects\\StorageTesting\\XmlStorage.ICPWorksheet";
+            string rootProgramDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string allExercisesXmlFilename = "DBStorage.ICPWorksheet";
+            string xmlPath = rootProgramDirectory + allExercisesXmlFilename;
+
             watch.Start();
             XmlHelper.ToXmlFile(worksheetIn, xmlPath);
             worksheetOut = XmlHelper.FromXmlFile<ExampleWorksheet2>(xmlPath);
@@ -119,7 +123,11 @@ namespace StorageTesting
         {
             //Creating the Database------------------------------------------------------------------------
             //In this method, store the entire DB in memory/ram
-            string dbPath = "C:\\Users\\rforzisi\\Documents\\Test Projects\\StorageTesting\\DBStorage.ICPWorksheet";
+            //string dbPath = "C:\\Users\\rforzisi\\Documents\\Test Projects\\StorageTesting\\DBStorage.ICPWorksheet";
+            string rootProgramDirectory = AppDomain.CurrentDomain.BaseDirectory;
+            string allExercisesXmlFilename = "DBStorage.ICPWorksheet";
+            string dbPath = rootProgramDirectory + allExercisesXmlFilename;
+
             try
             {
                 if(File.Exists(dbPath))
@@ -131,7 +139,7 @@ namespace StorageTesting
                 return;
             }
 
-            SQLiteConnection connection = new SQLiteConnection("Data Source=" + dbPath +";" + "Pooling=False;");
+            SQLiteConnection connection = new SQLiteConnection("Data Source=" + dbPath +";" + "Pooling=true;" + "Synchronous=Off;"); //journal mode off didnt do too much, Synchronous off made creating it ~10x faster
             connection.Open();
 
             watch.Restart();
@@ -162,7 +170,7 @@ namespace StorageTesting
 
             foreach (var solution in worksheetIn.Solutions)
             {
-                solution.SolutionType = SolutionType.Blank;
+                //solution.SolutionType = SolutionType.Blank;
             }
 
             watch.Restart();
