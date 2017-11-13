@@ -5,6 +5,7 @@ using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Net.Sockets;
 using System.Reflection;
 using System.Windows.Input;
 
@@ -30,27 +31,29 @@ namespace StorageTesting
             ListViewItems = new ObservableCollection<string>();
             WorksheetOutSolutions = new ObservableCollection<Solution2>();
             //Creating the demo worksheet------------------------------------------------------------------
-            worksheetIn.WorksheetName = "Balhhh";
+            worksheetIn.WorksheetName = "Blaahhh";
             worksheetIn.Elements.Add(new ElementWavelength2(){ElementName = "Cu", Wavelength = 329.543f, ElementId = 1});
             worksheetIn.Elements.Add(new ElementWavelength2(){ElementName = "Zn", Wavelength = 123.456f, ElementId = 2});
 
-            for (int i = 0; i < 10000; i++) //this looks very wierd and awkward
+            Random rng = new Random();
+
+            for (int i = 0; i < 1000; i++) 
             {
                 worksheetIn.Solutions.Add(new Solution2()
                 {
                     SolutionName = "Solution" + i,
-                    Measurements = new List<Measurement2>(){ new Measurement2()
-                    {
-                        Conc = 9001,
-                        ElementId = 1,
-                        SolutionId = i
-                    }, new Measurement2()
-                        {
-                            Conc = 55,
-                            ElementId = 2,
-                            SolutionId = i
-                        }}
+                    Measurements = new List<Measurement2>()
                 });
+
+                for (int j = 0; j < 10; j++)
+                {
+                    worksheetIn.Solutions[i].Measurements.Add(new Measurement2()
+                    {
+                        Conc = rng.Next(0,10000),
+                        ElementId = 1,
+                        SolutionId = i,
+                    });
+                }
             }
         }
 
@@ -65,7 +68,7 @@ namespace StorageTesting
             //By far the simplest and easiest method. But is it really the most feasible??
             //string xmlPath = "C:\\Users\\rforzisi\\Documents\\Test Projects\\StorageTesting\\XmlStorage.ICPWorksheet";
             string rootProgramDirectory = AppDomain.CurrentDomain.BaseDirectory;
-            string allExercisesXmlFilename = "DBStorage.ICPWorksheet";
+            string allExercisesXmlFilename = "XMLStorage.ICPWorksheet";
             string xmlPath = rootProgramDirectory + allExercisesXmlFilename;
 
             watch.Start();
@@ -76,12 +79,12 @@ namespace StorageTesting
 
             watch.Restart();
 
-            for (int i = 0; i < worksheetIn.Solutions.Count; i++)
-            {
-                //worksheetIn.Solutions.ElementAtOrDefault(i).SolutionName = "We are all the same";
-                XmlHelper.ToXmlFile(worksheetIn, xmlPath);
-                worksheetOut = XmlHelper.FromXmlFile<ExampleWorksheet2>(xmlPath); //i know this is only going to keep the last one but mehhh
-            }
+            //for (int i = 0; i < worksheetIn.Solutions.Count; i++)
+            //{
+            //    //worksheetIn.Solutions.ElementAtOrDefault(i).SolutionName = "We are all the same";
+            //    XmlHelper.ToXmlFile(worksheetIn, xmlPath);
+            //    worksheetOut = XmlHelper.FromXmlFile<ExampleWorksheet2>(xmlPath); //i know this is only going to keep the last one but mehhh
+            //}
 
             ListViewItems.Add("XML update time = " + watch.Elapsed);
 
@@ -130,7 +133,7 @@ namespace StorageTesting
 
             try
             {
-                if(File.Exists(dbPath))
+                if (File.Exists(dbPath))
                     File.Delete(dbPath);
             }
             catch (Exception e)
@@ -140,8 +143,9 @@ namespace StorageTesting
             }
 
             SQLiteConnection connection = new SQLiteConnection("Data Source=" + dbPath +";" + "Pooling=true;" + "Synchronous=Off;"); //journal mode off didnt do too much, Synchronous off made creating it ~10x faster
+            connection.SetPassword("a"); //comment out deleting the db so that this will actually mean something. If you then comment out this line itself it wont work because the database will be locked
             connection.Open();
-
+            
             watch.Restart();
             SQLiteHelper.CreateDatabase(dbPath);
             SQLiteHelper.CreateNewSolutionTable(connection);
@@ -170,11 +174,16 @@ namespace StorageTesting
 
             foreach (var solution in worksheetIn.Solutions)
             {
-                //solution.SolutionType = SolutionType.Blank;
+                solution.SolutionType = SolutionType.Blank;
             }
 
             watch.Restart();
             SQLiteHelper.UpdateMultipleSolutions(connection, worksheetIn.Solutions);
+            //foreach (var sol in worksheetIn.Solutions) //uhh this is rather nasty and could take a while to do. Try to avoid doing lots of writes in a loop like this and try do it in the helper where you can put it all in a transaction to significantly increase speed
+            //{
+            //    SQLiteHelper.UpdateMultipleMeasurements(connection, sol.Measurements);
+            //}
+
             ListViewItems.Add("Update data as transaction = " + watch.Elapsed);
             watch.Restart();
 
@@ -182,9 +191,12 @@ namespace StorageTesting
             SQLiteHelper.AddSingleElement(connection, new ElementWavelength2() { ElementName = "Unobtainium", ElementId = 42, Wavelength = 999.999f });
             SQLiteHelper.AddSingleMeasurement(connection, new Measurement2() { SolutionId = 999, ElementId = 42, Conc = 555, Intensity = 123456789 });
 
+            worksheetIn.Solutions[7].SolutionName = "Foo";
+            SQLiteHelper.UpdateSingleSolution(connection, worksheetIn.Solutions[7]);
+
             watch.Restart();
             var loadedSolutions= SQLiteHelper.LoadMultipleSolutions(connection);
-            var loadedMeasurements = SQLiteHelper.LoadMultipleMeasurements(connection, 999);
+            var loadedMeasurements = SQLiteHelper.LoadMultipleMeasurementsFromSolution(connection, 999);
 
             WorksheetOutSolutions.Clear();
             foreach (var solution in loadedSolutions)
@@ -193,7 +205,11 @@ namespace StorageTesting
             }
             ListViewItems.Add("Load Solutions and measurements into memory= " + watch.Elapsed);
 
+
+
             connection.Close();
+            connection.Dispose();
+            System.GC.Collect(); //the is required to quickly get rid of the excess ram that is generated after the large SQL statements
         }
 
         /// <summary>

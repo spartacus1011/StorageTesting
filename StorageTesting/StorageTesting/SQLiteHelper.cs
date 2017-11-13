@@ -64,10 +64,19 @@ namespace StorageTesting
 
         private static void CreateTable(SQLiteConnection connection, string tableName, string tableDefinition)
         {
-            string createCommand = string.Format("create table {0} ({1})", tableName, tableDefinition);
-            SQLiteCommand create = new SQLiteCommand(createCommand, connection);
-            create.ExecuteNonQuery();
-            create.Dispose();
+            try
+            {
+                string createCommand = string.Format("create table {0} ({1})", tableName, tableDefinition);
+                SQLiteCommand create = new SQLiteCommand(createCommand, connection);
+                create.ExecuteNonQuery();
+                create.Dispose(); //putting the dispose inside the try seems like a bad idea but how else would you do it?
+            }
+            catch (SQLiteException e)
+            {
+                //this usually means that the table that is trying to be created already exists
+                Console.WriteLine(e);
+            }
+
         }
 
         //Adding single items---------------------------------------------------------------------------------------------
@@ -112,7 +121,7 @@ namespace StorageTesting
         {
             //tableData more or less means columns
             tableData = tableData.Replace(" ", ""); //remove all spaces (Not really needed if you goven over the entered string but this makes things a bit neater)
-            string[] splitData = tableData.Split(','); 
+            string[] splitData = tableData.Split(',');
 
             if (splitData.Length != items.Count())
             {
@@ -128,15 +137,16 @@ namespace StorageTesting
             dataWithAt = dataWithAt.Substring(0, dataWithAt.LastIndexOf(",")); //remove the last comma
 
             string insertSQLstring = string.Format("insert into {0} ({1}) values ({2})", tableName, tableData, dataWithAt);
-            SQLiteCommand insertSQL = new SQLiteCommand(insertSQLstring, connection);
 
-            for (int i = 0; i < splitData.Length; i++)
+            using (SQLiteCommand insertSQL = new SQLiteCommand(insertSQLstring, connection))
             {
-                insertSQL.Parameters.AddWithValue(splitData.ElementAt(i), items.ElementAt(i));
-            }
+                for (int i = 0; i < splitData.Length; i++)
+                {
+                    insertSQL.Parameters.AddWithValue(splitData.ElementAt(i), items.ElementAt(i));
+                }
 
-            insertSQL.ExecuteNonQuery();
-            insertSQL.Dispose();
+                insertSQL.ExecuteNonQuery();
+            }
         }
 
         //Adding multiple items------------------------------------------------------------------------------------------------------------
@@ -213,25 +223,28 @@ namespace StorageTesting
             }
             dataWithAt = dataWithAt.Substring(0, dataWithAt.LastIndexOf(",")); //remove the last comma
 
-            SQLiteTransaction transaction = connection.BeginTransaction();
-            SQLiteCommand command = new SQLiteCommand(connection);
-            command.Transaction = transaction;
 
-            foreach (var items in allItems)
+            using (SQLiteTransaction transaction = connection.BeginTransaction())
             {
-                string commandString = string.Format("insert into {0} ({1}) values ({2})", tableName, tableData, dataWithAt);
-                command.CommandText = commandString;
-
-                for (int i = 0; i < splitData.Length; i++)
+                using (SQLiteCommand command = new SQLiteCommand(connection))
                 {
-                    command.Parameters.AddWithValue(splitData.ElementAt(i), items.ElementAt(i));
-                }
-                command.ExecuteNonQuery();
-            }
+                    command.Transaction = transaction;
 
-            transaction.Commit();
-            command.Dispose();
-            transaction.Dispose();
+                    foreach (var items in allItems)
+                    {
+                        string commandString = string.Format("insert into {0} ({1}) values ({2})", tableName, tableData, dataWithAt);
+                        command.CommandText = commandString;
+
+                        for (int i = 0; i < splitData.Length; i++)
+                        {
+                            command.Parameters.AddWithValue(splitData.ElementAt(i), items.ElementAt(i));
+                        }
+                        command.ExecuteNonQuery();
+                    }
+
+                    transaction.Commit();
+                }
+            }
         }
 
         //Loading multiple items------------------------------------------------------------------------------------------------------
@@ -262,7 +275,7 @@ namespace StorageTesting
             return loadedElements;
         }
 
-        public static List<Measurement2> LoadMultipleMeasurements(SQLiteConnection connection, int solutionId)
+        public static List<Measurement2> LoadMultipleMeasurementsFromSolution(SQLiteConnection connection, int solutionId)
         {
             DataTable dt = LoadMultipleItems(connection, MeasurementsTableName, MeasurementsTableData, "where Solution_Id = " + solutionId);
 
@@ -288,7 +301,7 @@ namespace StorageTesting
 
             DataTable dt = new DataTable();
             adapter.Fill(dt);
-
+            
             return dt;
 
         }
@@ -298,10 +311,9 @@ namespace StorageTesting
         /// </summary>
         public static void UpdateSingleSolution(SQLiteConnection connection, Solution2 solution)
         {
-            string updateString = "update Solutions set Solution_name = "+ SolutionName + " where Solution_Id = " + solution.SolutionID;
-            SQLiteCommand update = new SQLiteCommand(updateString, connection);
-            update.ExecuteNonQuery(); //Not sure if this is the right method
-            update.Dispose();
+            //lazyness but it works really well
+            List<Solution2> singleItemList = new List<Solution2>(1){solution};
+            UpdateMultipleSolutions(connection, singleItemList);
         }
 
         public static void UpdateMultipleSolutions(SQLiteConnection connection, IEnumerable<Solution2> solutions)
@@ -317,7 +329,30 @@ namespace StorageTesting
                 };
                 allObjectsToWrite.Add(objectsToWrite);
             }
-            UpdateMultipleItems(connection,SolutionTableName, SolutionsTableData, allObjectsToWrite);
+            
+            string whereConditions = "Solution_Id = @Solution_Id";
+            UpdateMultipleItems(connection,SolutionTableName, SolutionsTableData, allObjectsToWrite, whereConditions);
+        }
+
+        public static void UpdateMultipleMeasurements(SQLiteConnection connection, IEnumerable<Measurement2> measurements)
+        {
+            //Should probably add in something to sort by solutions
+            //No wait... it should do that automatically if the list is propery controlled outside of the helper due to each measurement being linked to a solutionId. Interesting...
+            List<List<object>> allObjectsToWrite = new List<List<object>>();
+            foreach (var measuremnt in measurements)
+            {
+                List<object> objectsToWrite = new List<object>
+                {
+                    measuremnt.SolutionId,
+                    measuremnt.ElementId,
+                    measuremnt.Intensity,
+                    measuremnt.Conc,
+                };
+                allObjectsToWrite.Add(objectsToWrite);
+            }
+
+            string whereConditions = "Solution_Id = @Solution_Id"; //this wont work 100% properly as it will make all the solutions measurements the same. can be made butter using guids or if implemented properly, replicate Ids (or any other easily identifyable Id)
+            UpdateMultipleItems(connection, MeasurementsTableName, MeasurementsTableData, allObjectsToWrite, whereConditions);
         }
 
         private static void UpdateMultipleItems(SQLiteConnection connection, string tableName, string tableData, IEnumerable<IEnumerable<object>> allItems, string whereconditions = "") //need to figure out the where conditions. may not be pretty
@@ -341,7 +376,7 @@ namespace StorageTesting
             }
             dataWithAt = dataWithAt.Substring(0, dataWithAt.LastIndexOf(",")); //remove the last comma
 
-            if (whereconditions == "")
+            if (whereconditions == "") //take care when using this method. Maybe make it good practise to make the ID for all data first just incase. If you are trying to update what you are using in the where conditions, it wont work!!
             {
                 whereconditions = splitData.FirstOrDefault() + " = @" + splitData.FirstOrDefault();
             }
