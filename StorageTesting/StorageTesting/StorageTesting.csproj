@@ -108,6 +108,7 @@
     <Compile Include="Enums.cs" />
     <Compile Include="ExampleWorksheet2.cs" />
     <Compile Include="IRandomInterface.cs" />
+    <Compile Include="Properties\Annotations.cs" />
     <Compile Include="SQLiteHelper.cs" />
     <Compile Include="Tests.cs" />
     <Compile Include="XmlHelper.cs" />

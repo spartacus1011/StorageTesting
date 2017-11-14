@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Collections.Specialized;
 using System.Data.SQLite;
 using System.Diagnostics;
 using System.IO;
@@ -30,6 +31,7 @@ namespace StorageTesting
         {
             ListViewItems = new ObservableCollection<string>();
             WorksheetOutSolutions = new ObservableCollection<Solution2>();
+            WorksheetOutSolutions.CollectionChanged += WorksheetOutSolutionsChanged;
             //Creating the demo worksheet------------------------------------------------------------------
             worksheetIn.WorksheetName = "Blaahhh";
             worksheetIn.Elements.Add(new ElementWavelength2(){ElementName = "Cu", Wavelength = 329.543f, ElementId = 1});
@@ -45,7 +47,7 @@ namespace StorageTesting
                     Measurements = new List<Measurement2>()
                 });
 
-                for (int j = 0; j < 10; j++)
+                for (int j = 0; j < 8000; j++)
                 {
                     worksheetIn.Solutions[i].Measurements.Add(new Measurement2()
                     {
@@ -55,6 +57,13 @@ namespace StorageTesting
                     });
                 }
             }
+        }
+
+        private void WorksheetOutSolutionsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            //this should work. im not quite sure why the bp doesnt get hit when i type changes into the data grid. The list itself does change.
+            //Solution 2 does have observable item implemented
+            
         }
 
         private void Clear()
@@ -143,7 +152,7 @@ namespace StorageTesting
             }
 
             SQLiteConnection connection = new SQLiteConnection("Data Source=" + dbPath +";" + "Pooling=true;" + "Synchronous=Off;"); //journal mode off didnt do too much, Synchronous off made creating it ~10x faster
-            connection.SetPassword("a"); //comment out deleting the db so that this will actually mean something. If you then comment out this line itself it wont work because the database will be locked
+            //connection.SetPassword("a"); //comment out deleting the db so that this will actually mean something. If you then comment out this line itself it wont work because the database will be locked
             connection.Open();
             
             watch.Restart();

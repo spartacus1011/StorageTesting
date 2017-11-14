@@ -13,6 +13,19 @@ namespace StorageTesting
     //I still think that surely there must be a better way than to do all this somewhat "Manually". Has no one ever made a library that can handle all this easily?
     public static class SQLiteHelper
     {
+        static SQLiteHelper() 
+        {
+            /* dont use const strings. Building things here would probs be a bit better.
+             * It allows for variable names to get changed and still be used the same in the db
+             * However, could be potentially bad for worksheet migration
+             * gets called just once the first time the SQLiteHelper is used
+             */
+
+            //Solution2 solution = new Solution2(); //naming solution
+            //string solutionTabledefinition= nameof(solution.SolutionName) + " int, " + nameof(solution.SolutionID) + " int, " + nameof(solution.SolutionTypeId) + " int";
+            //string SolutionTabledata = nameof(solution.SolutionName) + ", " + nameof(solution.SolutionID) + ", " + nameof(solution.SolutionTypeId);
+        }
+
         public static bool CreateDatabase(string filePathAndName)
         {
             if (!System.IO.File.Exists(filePathAndName))
@@ -36,7 +49,7 @@ namespace StorageTesting
 
         private const string ElementsTableName = "Elements";
         private const string ElementsTableData = "Element_name, Element_Id, Element_Wavelength";
-        private const string ElementsTableDefinition = "Element_name text, Element_Id int , Element_Wavelength decimal";
+        private const string ElementsTableDefinition = "Element_name text, Element_Id int , Element_Wavelength float";
 
         private const string SolutionTableName = "Solutions";
         private const string SolutionsTableData = "Solution_Name, Solution_Id, Solution_Type_Id";
@@ -44,11 +57,12 @@ namespace StorageTesting
 
         private const string MeasurementsTableName = "Measurements";
         private const string MeasurementsTableData = "Solution_Id, Element_Id, Intensity, Conc";
-        private const string MeasurementsTableDefinition = "Solution_Id int, Element_Id int, Intensity decimal, Conc decimal";
+        private const string MeasurementsTableDefinition = "Solution_Id int, Element_Id int, Intensity float, Conc float";
 
         //Creating tables---------------------------------------------------------------------------------------------
         public static void CreateNewSolutionTable(SQLiteConnection connection) 
         {
+           
             CreateTable(connection, SolutionTableName, SolutionsTableDefinition);
         }
 
@@ -82,7 +96,6 @@ namespace StorageTesting
         //Adding single items---------------------------------------------------------------------------------------------
         public static void AddSingleSolution(SQLiteConnection connection, Solution2 solution)
         {
-            //parameterising could probably be done better and more "automatic" but this gives better control
             List<object> objectsToWrite = new List<object>
             {
                 solution.SolutionName,
@@ -179,7 +192,6 @@ namespace StorageTesting
                 };
                 allObjectsToWrite.Add(objectsToWrite);
             }
-
             AddMultipleItems(connection, ElementsTableName, ElementsTableData, allObjectsToWrite);
         }
 
@@ -282,8 +294,8 @@ namespace StorageTesting
             List<Measurement2> loadedMeasurements= (from rw in dt.AsEnumerable()
                 select new Measurement2()
                 {
-                    Conc = Convert.ToDecimal(rw["Conc"]),
-                    Intensity = Convert.ToDecimal(rw["Intensity"]),
+                    Conc = Convert.ToSingle(rw["Conc"]),
+                    Intensity = Convert.ToSingle(rw["Intensity"]),
                     ElementId = Convert.ToInt32(rw["Element_Id"]),
                     SolutionId = Convert.ToInt32(rw["Solution_Id"])
 

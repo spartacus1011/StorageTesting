@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Dynamic;
 using System.Linq;
 using System.Text;
@@ -63,18 +64,17 @@ namespace StorageTesting
         {
             MeasuredValue = RNG.Next(0, 100000);
         }
-
     }
 
     public class Measurement2
     {
         public int SolutionId { get; set; }
         public int ElementId { get; set; }
-        public decimal Intensity { get; set; }
-        public decimal Conc { get; set; }
+        public float Intensity { get; set; }
+        public float Conc { get; set; }
     }
 
-    public class Solution2
+    public class Solution2 : ObservableObject
     {
         public string SolutionName { get; set; }
         public int NumberOfReplicates { get; set; }

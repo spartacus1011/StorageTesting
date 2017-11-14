@@ -25,7 +25,7 @@
         <ListBox Name="ItemsToDoListBox" ItemsSource="{Binding ListViewItems}" Height="500"></ListBox>
     </StackPanel>
         
-    <DataGrid ItemsSource="{Binding WorksheetOutSolutions}" DockPanel.Dock="Right"></DataGrid>
+    <DataGrid ItemsSource="{Binding WorksheetOutSolutions, Mode=TwoWay}" DockPanel.Dock="Right"></DataGrid>
     </DockPanel>
 
 </Window>
